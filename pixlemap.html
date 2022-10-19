@@ -8,6 +8,9 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <!-- boot5 -->
     <link rel="stylesheet" href="/css/bootstrap_5.0.2_only_btn.css">
+    <link rel="stylesheet" href="/css/bootstrap_5.0.2_only_gird.css">
+    <!-- fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,300" rel="stylesheet" type="text/css">
     <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"> -->
 </head>
 <style>
@@ -34,9 +37,9 @@
     var gridMap = [];
     var ele_wall = "W"; // -class(wall)
     var ele_road = "R"; // no class
-    var ele_start = "S"; // flag -> start_pixel == startpixel, class(start_pixel)
+    var ele_start = "S"; // flag -> pixel_type == startpixel, class(start_pixel)
     var ele_curr = "C"; // -class(current_road)
-    var ele_goal = "G";
+    var ele_goal = "G";  // flag -> pixel_type == goalpixel, class(goal_pixel)
     var pixel_type = null; 
 
     class Node{
@@ -81,26 +84,27 @@
     };
 
 
-    function generateGridMap(pixle_num){ // [USELESS]
-        $("#genGridMap").click(function(){
-            for(let i = 0; i < pixle_num ; i++){
-                var cls= $("#pixelGrid").find('#pixel_'+i).attr('class');
-                if(cls == "wall"){
-                    gridMap[i] = ele_wall;
-                }
-                else if(cls == "start_pixel"){
-                    gridMap[i] = ele_start;
-                }
-                else if(cls == "goal_pixel"){
-                    gridMap[i] = ele_goal;
-                }                
-                else{
-                    // populate with empty road
-                    gridMap[i] = ele_road;
-                }
-            }
-        });
-    }
+    // function generateGridMap(pixle_num){ // [USELESS]
+    //     $("#genGridMap").click(function(){
+    //         for(let i = 0; i < pixle_num ; i++){
+    //             var cls= $("#pixelGrid").find('#pixel_'+i).attr('class');
+    //             if(cls == "wall"){
+    //                 gridMap[i] = ele_wall;
+    //             }
+    //             else if(cls == "start_pixel"){
+    //                 gridMap[i] = ele_start;
+    //             }
+    //             else if(cls == "goal_pixel"){
+    //                 gridMap[i] = ele_goal;
+    //             }                
+    //             else{
+    //                 // populate with empty road
+    //                 gridMap[i] = ele_road;
+    //             }
+    //         }
+    //     });
+    //     console.log(gridMap);
+    // }
 
     function getCurrentGridMap(pixle_num) // change updateGridMap too ///[TODO] join getCurrentGridMap + updateGridMap
     {
@@ -117,7 +121,7 @@
                 tempGridMap[i] = ele_curr;
             }
             else if(cls == "goal_pixel"){
-                    gridMap[i] = ele_goal;
+                tempGridMap[i] = ele_goal;
             }             
             else{
                 // populate with empty road
@@ -156,11 +160,6 @@
         for(let i = 0; i < num ; i++)
         {
             $("#pixelGrid").append('<div id="pixel_'+i+'"style="float:left;border: 1px solid #AED6F1; width:'+size+'px; height:'+size+'px;"> </div>');
-            // single click event
-            // $("#pixel_"+i).click(function(){
-            //     console.log("#pixel_"+i);
-            //     $(this).css('background-color', '#000000');
-            // });
 
             // populate with empty road // redundent code will will ensure dict key matches with pixel id
             gridMap[i] = ele_road;
@@ -172,68 +171,81 @@
                 isMouseClicked = false;
             }).mousemove(function(){
                 if(isMouseClicked){
+                    $(this).removeClass();
                     $(this).addClass("wall");
                 }   
             });
 
-
+            // [TODO] condense this code
             $("#pixel_"+i).click(function(){
                 if(pixel_type == "startpixel"){ // single click activate
                     $(this).removeClass();
                     $(this).toggleClass("start_pixel");  
                     pixel_type = null;     
                     $("#start_pixel_btn").removeClass("activate");    
-                    startPixelState();
+                    specialPixelState("start_pixel_btn");
                 }
+                else if(pixel_type == "goalpixel"){ // single click activate
+                    $(this).removeClass();
+                    $(this).toggleClass("goal_pixel");  
+                    pixel_type = null;     
+                    $("#goal_pixel_btn").removeClass("activate");    
+                    specialPixelState("goal_pixel_btn");
+                }     
                 else{
-                    if($(this).hasClass("start_pixel")){ // deactive start_pixel is active
+                    if($(this).hasClass("start_pixel")){ // de-active start_pixel is active
                         $(this).toggleClass("start_pixel");
                     }
+                    else if($(this).hasClass("goal_pixel")){ // de-active start_pixel is active
+                        $(this).toggleClass("goal_pixel");
+                    }
                     $(this).toggleClass("wall"); 
-                }        
-            });  
-            // $("#pixel_"+i).click(function(){
-            //     if(pixel_type == "startpixel"){ // check toggle btn type
-            //         if($(this).hasClass("wall")){ // deactive start_pixel is active
-            //             $(this).toggleClass("wall");
-            //         }
-            //         $(this).toggleClass("start_pixel");  
-            //         pixel_type = null;         
-            //     }
-            //     else{
-            //         if($(this).hasClass("start_pixel")){ // deactive start_pixel is active
-            //             $(this).toggleClass("start_pixel");
-            //         }
-            //         $(this).toggleClass("wall"); 
-            //     }        
-            // });            
+                } 
+                
+            }); 
             
         }
     };
 
-    function startPixelState(){
-        var condition = $("#start_pixel_btn").hasClass("activate")
-        if(condition){
-            console.log("startPixelState Toggle is active")
-            $("#start_pixel_btn").removeClass("btn-warning").addClass("btn-outline-warning");
+    function specialPixelState(btn_id){ // change button design
+        var condition = $("#"+btn_id).hasClass("activate");
+        if(condition)
+        {
+            console.log(btn_id+" Actived");
+            var classname = $("#"+btn_id).attr("class");
+            classname = classname.replace("-","-outline-");
+
+            $("#"+btn_id).removeClass();
+            $("#"+btn_id).addClass(classname);
         }
-        else{
-            console.log("startPixelState Toggle is deactive")
-            $("#start_pixel_btn").removeClass("btn-outline-warning").addClass("btn-warning");
-        }
+        else
+        {
+            console.log(btn_id+" De-actived");
+            var classname = $("#"+btn_id).attr("class");
+            classname = classname.replace("-outline-","-");
+
+            $("#"+btn_id).removeClass();
+            $("#"+btn_id).addClass(classname);            
+        }    
     }
 
-    function startPixelToggleEvent(){
+    function specialPixelToggleEvent(){
         $("#start_pixel_btn").click(function(){
             $(this).toggleClass("activate");
-            startPixelState();
+            specialPixelState($(this).attr("id"));
             pixel_type = "startpixel";
-        });   
+        });
+
+        $("#goal_pixel_btn").click(function(){
+            $(this).toggleClass("activate");
+            specialPixelState($(this).attr("id"));
+            pixel_type = "goalpixel";
+        });          
     }
 
 class Pipeline{ 
     grid_map = null;
-    // pixle_num = null; 
+    // pixle_num = null;  [USELESS]
 
     constructor(grid_map,pixle_num)
     {
@@ -301,7 +313,6 @@ class Pipeline{
         $("#execute").click(async function(){
             var grid_map = getCurrentGridMap(pixle_num);
             pipe = new Pipeline(grid_map,pixle_num);
-
             var frontier = new StackFrontier()
 
             var strt_index = pipe.start_pixelFinder()
@@ -313,21 +324,30 @@ class Pipeline{
             while(true)
             {   
                 var curr_node = frontier.remove()
+                var goal_node = null;
+
                 adjcnt =  pipe.adjacent_pixelFinder(curr_node.value);
   
                 for (const [key, value] of Object.entries(adjcnt)){
-                if(value != null && grid_map[value] == ele_road){ // valid traversable road
-                    grid_map[value] = ele_curr;
-                    node = new Node(value,key,node);
-                    frontier.add(node)
+                    if(value != null && grid_map[value] == ele_road){ // valid traversable road
+                        grid_map[value] = ele_curr;
+                        node = new Node(value,key,node);
+                        frontier.add(node)
                     }
+                    else if(value != null && grid_map[value] == ele_goal)
+                    {
+                        goal_node = value;
+                    }                    
                 }
-                await sleep(100);
-                updateGridMap(grid_map,400)        
-            }
 
-            // console.log(grid_map)
-            
+                await sleep(100);
+                updateGridMap(grid_map,400)  
+                
+                if(goal_node!=null){
+                    alert("Goal Found!");
+                    break;
+                }
+            }
 
         });
     }
@@ -340,35 +360,52 @@ class Pipeline{
         pixle_size = 30
         pixle_num = (gridx*gridy)/(pixle_size*pixle_size) // alt : if squr (600/30)^2
         generatePixle(pixle_num,pixle_size-2);
-        startPixelToggleEvent();
-        // generateGridMap(pixle_num);
+        specialPixelToggleEvent();
 
-        
- 
-        // console.log(n2.parentNode.get());
-        // var q = new StackFrontier(n)
-
-        
-        // matixMapper(gridMap,gridx,gridy,pixle_size,pixle_num)
         execute(gridMap,gridx,gridy,pixle_size,pixle_num);
     });
 </script>
 <body>
-    <div id="pixelGridContainer">
+    <div class="container" style="padding-top:50px;">
+        <div class="row">
 
+            <div class="col">
+                <div id="pixelGridContainer">
+    
+                </div>
+            </div>
+ 
+            <div class="col">
+                <h2 style="color: white; text-align: center; font-family: Open Sans;">Maze Elements</h2>
+
+                <div class="d-flex justify-content-center">
+                    <button id="start_pixel_btn" class="btn btn-warning">Start Block</button>
+
+                    <div style="padding-left: 10px; padding-right: 10px;"></div>
+
+                    <button id="goal_pixel_btn" class="btn btn-success">Goal Block</button> 
+                </div>
+
+                <h3 style="color: white; text-align: center; font-family: Open Sans; padding-top: 20px;">Pathfinding Algorithms</h3>
+                <div class="d-flex justify-content-center">
+                    <button id="execute" class="btn btn-primary btn-sm"> BFS </button>
+                </div>
+
+                <!-- <div class="d-flex justify-content-center" style="border: 1px solid white; padding:20px"> -->
+                  
+                <!-- </div> -->
+            </div>
+        </div>
     </div>
 
-    <div style="padding-top: 20px;">
-        <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"> -->
 
-    <button id="genGridMap">genGridMap</button>
 
-    <button id="start_pixel_btn" class="btn btn-warning">Start Block</button>
+    <!-- <button id="genGridMap" title="For De-Buging Purpose">genGridMap</button> -->
+    <!-- <div style="padding-left:210px;">
 
-    <button id="execute">Algo</button>
-    <!-- <div style="border: 1px solid black; width:600px; height:600px;">
-        <div style="border: 1px solid black; width:100px; height:100px; float: left;"> </div>
+
+        <button id="execute" class="btn btn-primary btn-sm">BFS</button>
     </div> -->
-    </div>
+    
 </body>
 </html>
