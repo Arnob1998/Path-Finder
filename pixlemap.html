@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- boot5 -->
+    <link rel="stylesheet" href="/css/bootstrap_5.0.2_only_btn.css">
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"> -->
+</head>
+<style>
+    .wall{
+    background: #224e73;
+    }
+    .start_pixel{
+        background: orange;
+    }
+    .current_road{
+        background-color: lightgreen;
+    }
+    .goal_pixel{
+        background-color: green;
+    }
+    body{
+        background-color: #000000;
+    }
+
+</style>
+
+<script>
+    // markers : [SQRT] [USELESS] [TEMP] [TODO]
+    var gridMap = [];
+    var ele_wall = "W"; // -class(wall)
+    var ele_road = "R"; // no class
+    var ele_start = "S"; // flag -> start_pixel == startpixel, class(start_pixel)
+    var ele_curr = "C"; // -class(current_road)
+    var ele_goal = "G";
+    var pixel_type = null; 
+
+    class Node{
+
+        constructor(value,action,parent){
+            this.value = value;
+            this.parent = parent;
+            this.action = action;
+        }
+
+    }
+
+    class StackFrontier{
+        frontier = null;
+        constructor(){
+            this.frontier = [];
+        }
+
+        add(node){
+            this.frontier.push(node);
+        }
+
+        remove(){
+            if(this.is_empty()){
+                var removed = this.frontier.pop()
+                return removed;
+            }
+        }
+
+        is_empty(){
+            if(this.frontier.length == 0){
+                alert("Frontier.frontier is Empty");
+            }
+            else{
+                return true;
+            }
+        }
+    }
+
+    function createGrid(x,y){
+        $("#pixelGridContainer").append('<div id="pixelGrid" style="border: .1px solid #6aa3db; width:'+y+'px; height:'+y+'px;"></div>');
+    };
+
+
+    function generateGridMap(pixle_num){ // [USELESS]
+        $("#genGridMap").click(function(){
+            for(let i = 0; i < pixle_num ; i++){
+                var cls= $("#pixelGrid").find('#pixel_'+i).attr('class');
+                if(cls == "wall"){
+                    gridMap[i] = ele_wall;
+                }
+                else if(cls == "start_pixel"){
+                    gridMap[i] = ele_start;
+                }
+                else if(cls == "goal_pixel"){
+                    gridMap[i] = ele_goal;
+                }                
+                else{
+                    // populate with empty road
+                    gridMap[i] = ele_road;
+                }
+            }
+        });
+    }
+
+    function getCurrentGridMap(pixle_num) // change updateGridMap too ///[TODO] join getCurrentGridMap + updateGridMap
+    {
+        var tempGridMap = {};
+        for(let i = 0; i < pixle_num ; i++){
+            var cls= $("#pixelGrid").find('#pixel_'+i).attr('class');
+            if(cls == "wall"){
+                tempGridMap[i] = ele_wall;
+            }
+            else if(cls == "start_pixel"){
+                tempGridMap[i] = ele_start;
+            }
+            else if(cls == "current_road"){
+                tempGridMap[i] = ele_curr;
+            }
+            else if(cls == "goal_pixel"){
+                    gridMap[i] = ele_goal;
+            }             
+            else{
+                // populate with empty road
+                tempGridMap[i] = ele_road;
+            }
+        }
+        return tempGridMap;     
+    }
+
+    function updateGridMap(new_grid,pixle_num)
+    {
+        for(let i = 0; i < pixle_num ; i++){
+            $('#pixel_'+i).removeClass();
+            
+            if(new_grid[i] == ele_wall) // [TODO] use a map
+            {
+                $('#pixel_'+i).addClass("wall");
+            }
+            else if(new_grid[i] == ele_start)
+            {
+                $('#pixel_'+i).addClass("start_pixel");
+            }
+            else if(new_grid[i] == ele_curr){
+                $('#pixel_'+i).addClass("current_road");
+            }
+            else if(new_grid[i] == ele_goal){
+                $('#pixel_'+i).addClass("goal_pixel");
+            }            
+            // do nothing for road
+        }
+    }
+
+
+
+    function generatePixle(num,size){
+        for(let i = 0; i < num ; i++)
+        {
+            $("#pixelGrid").append('<div id="pixel_'+i+'"style="float:left;border: 1px solid #AED6F1; width:'+size+'px; height:'+size+'px;"> </div>');
+            // single click event
+            // $("#pixel_"+i).click(function(){
+            //     console.log("#pixel_"+i);
+            //     $(this).css('background-color', '#000000');
+            // });
+
+            // populate with empty road // redundent code will will ensure dict key matches with pixel id
+            gridMap[i] = ele_road;
+            // drag event
+            var isMouseClicked = false
+            $('#pixel_'+i).mousedown(function(){
+	            isMouseClicked = true;	
+            }).mouseup(function(){
+                isMouseClicked = false;
+            }).mousemove(function(){
+                if(isMouseClicked){
+                    $(this).addClass("wall");
+                }   
+            });
+
+
+            $("#pixel_"+i).click(function(){
+                if(pixel_type == "startpixel"){ // single click activate
+                    $(this).removeClass();
+                    $(this).toggleClass("start_pixel");  
+                    pixel_type = null;     
+                    $("#start_pixel_btn").removeClass("activate");    
+                    startPixelState();
+                }
+                else{
+                    if($(this).hasClass("start_pixel")){ // deactive start_pixel is active
+                        $(this).toggleClass("start_pixel");
+                    }
+                    $(this).toggleClass("wall"); 
+                }        
+            });  
+            // $("#pixel_"+i).click(function(){
+            //     if(pixel_type == "startpixel"){ // check toggle btn type
+            //         if($(this).hasClass("wall")){ // deactive start_pixel is active
+            //             $(this).toggleClass("wall");
+            //         }
+            //         $(this).toggleClass("start_pixel");  
+            //         pixel_type = null;         
+            //     }
+            //     else{
+            //         if($(this).hasClass("start_pixel")){ // deactive start_pixel is active
+            //             $(this).toggleClass("start_pixel");
+            //         }
+            //         $(this).toggleClass("wall"); 
+            //     }        
+            // });            
+            
+        }
+    };
+
+    function startPixelState(){
+        var condition = $("#start_pixel_btn").hasClass("activate")
+        if(condition){
+            console.log("startPixelState Toggle is active")
+            $("#start_pixel_btn").removeClass("btn-warning").addClass("btn-outline-warning");
+        }
+        else{
+            console.log("startPixelState Toggle is deactive")
+            $("#start_pixel_btn").removeClass("btn-outline-warning").addClass("btn-warning");
+        }
+    }
+
+    function startPixelToggleEvent(){
+        $("#start_pixel_btn").click(function(){
+            $(this).toggleClass("activate");
+            startPixelState();
+            pixel_type = "startpixel";
+        });   
+    }
+
+class Pipeline{ 
+    grid_map = null;
+    // pixle_num = null; 
+
+    constructor(grid_map,pixle_num)
+    {
+        this.grid_map = grid_map;
+        this.pixle_num = pixle_num;
+    }
+
+    start_pixelFinder()
+    {
+        var pos = Object.keys(this.grid_map).find(key => this.grid_map[key] === "S");
+        if(pos != null){
+            return pos;
+        }
+        else{
+            alert("No Starting node detected!");
+        }
+    }
+
+    adjacent_pixelFinder(curr_pixel_i) //[SQRT]
+    {   
+        var steps = Math.sqrt(this.pixle_num);
+
+        var result = {};
+        var map = {"top":-steps, "bottom":+steps, "left":-1, "right":+1} // [TODO]  left and right has exception, curr_pixel_i/20 find how in which row
+            
+        for (const [key, value] of Object.entries(map))
+        {   
+            var path = parseInt(curr_pixel_i) + parseInt(value);
+
+            if(this.grid_map[path] != null)
+            {
+                result[key] = path;
+            }
+            else{
+                result[key] = null;
+            }    
+        }        
+
+        return this.resultValidator(curr_pixel_i,result,steps);
+    }
+
+    resultValidator(curr_pixel_i,result,pixel_rnum) //[SQRT] fixes left-right exception cases
+    {
+        var e_cases = ["left","right"];
+
+        for(let i = 0; i < e_cases.length ; i++)
+        {   
+            var currP_row = Math.floor(result[e_cases[i]]/pixel_rnum);
+            var destP_row = Math.floor(curr_pixel_i/pixel_rnum);
+            if(currP_row != destP_row){
+                result[e_cases[i]] = null;
+            }
+        } 
+        return result;
+    }
+
+}        
+    
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function execute(grid ,grid_x,grid_y,pixe_size,pixle_num)
+    {
+        $("#execute").click(async function(){
+            var grid_map = getCurrentGridMap(pixle_num);
+            pipe = new Pipeline(grid_map,pixle_num);
+
+            var frontier = new StackFrontier()
+
+            var strt_index = pipe.start_pixelFinder()
+
+            var node = new Node(strt_index,null,null);
+            frontier.add(node)
+            var adjcnt = null;
+
+            while(true)
+            {   
+                var curr_node = frontier.remove()
+                adjcnt =  pipe.adjacent_pixelFinder(curr_node.value);
+  
+                for (const [key, value] of Object.entries(adjcnt)){
+                if(value != null && grid_map[value] == ele_road){ // valid traversable road
+                    grid_map[value] = ele_curr;
+                    node = new Node(value,key,node);
+                    frontier.add(node)
+                    }
+                }
+                await sleep(100);
+                updateGridMap(grid_map,400)        
+            }
+
+            // console.log(grid_map)
+            
+
+        });
+    }
+
+
+    $(document).ready(function(){ // must minus the left and right border for hte pixel. pixel -1 -1
+        gridx = 600
+        gridy = 600
+        createGrid(gridx,gridy);
+        pixle_size = 30
+        pixle_num = (gridx*gridy)/(pixle_size*pixle_size) // alt : if squr (600/30)^2
+        generatePixle(pixle_num,pixle_size-2);
+        startPixelToggleEvent();
+        // generateGridMap(pixle_num);
+
+        
+ 
+        // console.log(n2.parentNode.get());
+        // var q = new StackFrontier(n)
+
+        
+        // matixMapper(gridMap,gridx,gridy,pixle_size,pixle_num)
+        execute(gridMap,gridx,gridy,pixle_size,pixle_num);
+    });
+</script>
+<body>
+    <div id="pixelGridContainer">
+
+    </div>
+
+    <div style="padding-top: 20px;">
+        <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"> -->
+
+    <button id="genGridMap">genGridMap</button>
+
+    <button id="start_pixel_btn" class="btn btn-warning">Start Block</button>
+
+    <button id="execute">Algo</button>
+    <!-- <div style="border: 1px solid black; width:600px; height:600px;">
+        <div style="border: 1px solid black; width:100px; height:100px; float: left;"> </div>
+    </div> -->
+    </div>
+</body>
+</html>
