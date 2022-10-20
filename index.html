@@ -53,13 +53,21 @@
     }
 
     class StackFrontier{
-        frontier = null;
         constructor(){
             this.frontier = [];
         }
 
         add(node){
             this.frontier.push(node);
+        }
+
+        is_empty(){
+            if(this.frontier.length === 0){
+                alert("Frontier.frontier is Empty");
+            }
+            else{
+                return true;
+            }
         }
 
         remove(){
@@ -69,12 +77,15 @@
             }
         }
 
-        is_empty(){
-            if(this.frontier.length == 0){
-                alert("Frontier.frontier is Empty");
-            }
-            else{
-                return true;
+    }
+
+    class QueueFrontier extends StackFrontier{
+
+        remove(){
+            if(this.is_empty()){
+                var removed = this.frontier[0];
+                this.frontier.splice(0,1);
+                return removed;
             }
         }
     }
@@ -302,18 +313,25 @@ class Pipeline{
         return result;
     }
 
-}        
-    
-    function sleep(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms));
-    }
+}    
 
-    function execute(grid ,grid_x,grid_y,pixe_size,pixle_num)
-    {
-        $("#execute").click(async function(){
+    class FirstSearch{
+        constructor(pixle_num){
+            this.pixle_num = pixle_num;
+        }
+
+        sleep(ms){
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        frontierContainer(){
+
+        }
+
+        async solve(){
             var grid_map = getCurrentGridMap(pixle_num);
-            pipe = new Pipeline(grid_map,pixle_num);
-            var frontier = new StackFrontier()
+            var pipe = new Pipeline(grid_map,pixle_num);
+            var frontier = this.frontierContainer();
 
             var strt_index = pipe.start_pixelFinder()
 
@@ -324,10 +342,10 @@ class Pipeline{
             while(true)
             {   
                 var curr_node = frontier.remove()
+                console.log(curr_node.value)
                 var goal_node = null;
 
                 adjcnt =  pipe.adjacent_pixelFinder(curr_node.value);
-  
                 for (const [key, value] of Object.entries(adjcnt)){
                     if(value != null && grid_map[value] == ele_road){ // valid traversable road
                         grid_map[value] = ele_curr;
@@ -340,15 +358,39 @@ class Pipeline{
                     }                    
                 }
 
-                await sleep(100);
+                await this.sleep(100);
                 updateGridMap(grid_map,400)  
                 
                 if(goal_node!=null){
                     alert("Goal Found!");
                     break;
                 }
-            }
+            }            
+        }
+    }
 
+    class DepthFirstSearch extends FirstSearch{
+        frontierContainer(){
+            return new StackFrontier();
+        }
+    }
+
+    class BreadthFirstSearch extends FirstSearch{
+        frontierContainer(){
+            return new QueueFrontier();
+        }
+    }
+
+    function execute(grid ,grid_x,grid_y,pixe_size,pixle_num)
+    {
+        $("#dfs_execute").click(function(){
+            var bfs = new DepthFirstSearch();
+            bfs.solve();
+        });
+
+        $("#bfs_execute").click(function(){
+            var dfs = new BreadthFirstSearch();
+            dfs.solve();
         });
     }
 
@@ -387,8 +429,12 @@ class Pipeline{
                 </div>
 
                 <h3 style="color: white; text-align: center; font-family: Open Sans; margin-top: 30px;">Pathfinding Algorithms</h3>
+                
                 <div class="d-flex justify-content-center">
-                    <button id="execute" class="btn btn-primary btn-sm"> BFS </button>
+                    <button id="dfs_execute" class="btn btn-primary btn-sm"> Depth First Search </button>       
+                </div>
+                <div class="d-flex justify-content-center" style="padding-top:10px;">
+                    <button id="bfs_execute" class="btn btn-primary btn-sm"> Breadth First Search </button>      
                 </div>
 
                 <h3 style="color: white; text-align: center; font-family: Open Sans; margin-top: 120px;">Create a Maze</h3>
